@@ -14,8 +14,12 @@
     "body-parser": "^1.20.2",
     "dotenv": "^16.3.1",
     "express": "^4.18.2",
+<<<<<<< HEAD
     "express-session": "^1.17.3",
     "mysql2": "^3.6.5",
     "path": "^0.12.7"
+=======
+    "mysql2": "^3.6.5"
+>>>>>>> e4b64f5e29983ad2ddcf0e2a161081264b4ea5ea
   }
 }

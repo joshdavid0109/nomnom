@@ -19,7 +19,7 @@ app.set('views', path.join(__dirname, 'ojt-monitoring-files'));
 // Import functions from database.js
 const { fetchStudent, authenticateAdviser, hashAdviserPasswords, fetchInternId } = require('./database.js');
 const { fetchAdviser, fetchInterns, insertAnnouncement, fetchAnnouncements } = require('./database.js');
-const { fetchStudents, fetchPendingStudents, fetchPendingStudentsByName, fetchPendingStudentsByAddress,
+const { fetchStudents, fetchPendingStudents, fetchPendingStudentsByName, fetchPendingStudentsByClassCode, fetchPendingStudentsByAddress,
     fetchPendingStudentsByCompany, updateStatus, fetchInternDailyReports,
     fetchRequirementsByStudentId, updateRemarks } = require('./database.js');
 
@@ -130,6 +130,9 @@ app.get('/ojt-pending/sort', async (req, res) => {
         switch (sortBy) {
             case 'name':
                 pendingStudents = await fetchPendingStudentsByName();
+                break;
+            case 'classcode':
+                pendingStudents = await fetchPendingStudentsByClassCode();
                 break;
             case 'company':
                 pendingStudents = await fetchPendingStudentsByCompany();

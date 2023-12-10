@@ -16,12 +16,13 @@ main.container
   aside.left-nav
     ol
       li
-        a(href="/view/index.html") DASHBOARD
+        a(href="/ojt-dashboard") DASHBOARD
       li
         a(href="/ojt-pending") PENDING
       li
         a(href="#") ABOUT US
-    img(src="../", alt)
+      form(action='/logout' method="GET")
+        input(id="logoutbutton" type="submit" value="LOG OUT")
   section
     .section-holder
       .pending-title Pending Students
@@ -34,6 +35,7 @@ main.container
               select#dropdown
                 option(value="default" data-view="default") Default
                 option(value="name" data-view="name") Name
+                option(value="classcode" data-view="classcode") Class Code
                 option(value="company" data-view="company") Company
                 option(value="address" data-view="address") Address
             .search-field-box
@@ -45,12 +47,14 @@ main.container
             tbody
               tr.table-header
                 th NAME
+                th CLASS CODE
                 th COMPANY
                 th ADDRESS
                 th STATUS
             each student in pendingStudents
               tr.table-data(data-student-id=student.studentid)  
-                td= student.studentName 
+                td= student.studentName
+                td= student.classcode 
                 td= student.companyname 
                 td= student.companyaddress
                 td

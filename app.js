@@ -334,7 +334,8 @@ app.post('/ojt-dashboard/postannouncement', async (req, res) => {
 
     // Handle your data here (e.g., save to database, process, etc.)
     insertAnnouncement(sender, recipient, subject, description);
-    res.redirect('/ojt-dashboard#main');
+    res.redirect('/ojt-dashboard');
+
 });
 
 app.post('/ojt-dashboard/deleteannouncement', async (req, res) => {
@@ -342,6 +343,7 @@ app.post('/ojt-dashboard/deleteannouncement', async (req, res) => {
     
     try {
         deleteAnnouncement(announcementid);
+        res.redirect('/ojt-dashboard')
 
         res.status(200).json({ success: true, message: 'Announcement deleted successfully' });
     } catch (err) {

@@ -32,7 +32,7 @@ async function fetchStudents() {
 async function fetchPendingStudents(adviserID) {
     try {
         const [rows] = await pool.query(`
-        SELECT s.studentid, s.studentName, s.classcode, c.companyname, c.companyaddress
+        SELECT s.studentid, s.studentName, s.classcode, c.companyname, c.companyaddress, i.worktype
         FROM interns i
             JOIN students s ON i.studentid = s.studentid
             JOIN company c ON i.companyid = c.companyid
@@ -109,6 +109,24 @@ async function fetchPendingStudentsByAddress(adviserID) {
             JOIN company c ON i.companyid = c.companyid
             WHERE i.status = 'PENDING' AND i.adviserID = ?
             ORDER BY c.companyaddress;
+        `, [adviserID]);
+        console.log('Fetch Pending Students Query Result:', rows);
+        return rows;
+    } catch (error) {
+        console.error('Error executing query:', error.message);
+        throw error;
+    }
+}
+
+async function fetchPendingStudentsByWorkType(adviserID) {
+    try {
+        const [rows] = await pool.query(`
+        SELECT s.studentid, s.studentName, s.classcode, c.companyname, c.companyaddress, i.worktype
+        FROM interns i
+            JOIN students s ON i.studentid = s.studentid
+            JOIN company c ON i.companyid = c.companyid
+            WHERE i.status = 'PENDING' AND i.adviserID = ?
+            ORDER BY i.worktype;
         `, [adviserID]);
         console.log('Fetch Pending Students Query Result:', rows);
         return rows;
@@ -477,6 +495,7 @@ module.exports = {
     fetchPendingStudentsByClassCode,
     fetchPendingStudentsByCompany,
     fetchPendingStudentsByAddress,
+    fetchPendingStudentsByWorkType,
     fetchRequirementsByStudentId,
     updateRemarks,
     updateStatus,

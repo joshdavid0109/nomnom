@@ -29,8 +29,8 @@ app.set('views', path.join(__dirname, 'ojt-monitoring-files'));
 const { fetchStudent, authenticateAdviser, hashAdviserPasswords, fetchInternId } = require('./database.js');
 const { fetchAdviser, fetchInterns, insertAnnouncement, fetchAnnouncements, deleteAnnouncement } = require('./database.js');
 const { fetchStudents, fetchPendingStudents, fetchPendingStudentsByName, fetchPendingStudentsByClassCode, fetchPendingStudentsByAddress,
-    fetchPendingStudentsByCompany, updateStatus, fetchInternDailyReports,
-    fetchRequirementsByStudentId, fetchRequirementsByInternId, updateRemarks, fetchSupervisor, fetchWeeklyReports, uploadPicture } = require('./database.js');
+    fetchPendingStudentsByCompany, fetchPendingStudentsByWorkType, updateStatus, fetchInternDailyReports,
+    fetchRequirementsByStudentId, updateRemarks, fetchSupervisor, fetchWeeklyReports, uploadPicture } = require('./database.js');
 
 //GET 
 
@@ -190,11 +190,11 @@ app.get("/ojt-dashboard/requirements-reports/:internName", async (req, res) => {
 
         console.log(internId + ' is ' + internName);
 
-        // Fetch the requirements using the intern ID
-        const requirements = await fetchRequirementsByInternId(internId);
+        // Fetch the reports using the intern ID
+        const reports = await fetchInternDailyReports(internId);
 
-        // Check if requirements array is empty
-        if (requirements.length === 0) {
+        // Check if reports array is empty
+        if (reports.length === 0) {
             return res.render('ojt-dashboard/views/no-reports.pug', {
                 message: 'No requirements found for ' + internName,
                 colspan: 4,
@@ -202,17 +202,15 @@ app.get("/ojt-dashboard/requirements-reports/:internName", async (req, res) => {
             });
         }
 
-        // Format dates in requirements (if there's a date field in requirements)
-        requirements.forEach(requirement => {
-            if (requirement.datesubmitted) {
-                requirement.datesubmitted = new Date(requirement.datesubmitted).toDateString();
-            }
-        });
+        for (let report of reports) {
+            report.date = new Date(report.date).toDateString();
+            const supervisorDetails = await fetchSupervisor(report.supervisorid);
+            report.supervisorName = supervisorDetails.supervisorname;
+        }
+        console.log('Reports:', reports);
 
-        console.log('Requirements:', requirements);
-
-        // Render the intern requirements view with the requirements data
-        res.render('ojt-dashboard/views/intern-requirement.pug', { requirements });
+        // Render the intern reports view with the reports data
+        res.render('ojt-dashboard/views/intern-requirements.pug', { reports });
     } catch (error) {
         console.error('Error', error);
         res.status(500).send("Error: Internal Server Error");
@@ -258,6 +256,8 @@ app.get('/ojt-pending/sort', async (req, res) => {
             case 'address':
                 pendingStudents = await fetchPendingStudentsByAddress(req.session.adviserID);
                 break;
+            case 'worktype':
+                pendingStudents = await fetchPendingStudentsByWorkType(req.session.adviserID);
             default:
                 pendingStudents = await fetchPendingStudents(req.session.adviserID);
         }

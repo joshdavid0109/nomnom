@@ -27,7 +27,7 @@ app.set('views', path.join(__dirname, 'ojt-monitoring-files'));
 
 // Import functions from database.js
 const { fetchStudent, authenticateAdviser, hashAdviserPasswords, fetchInternId } = require('./database.js');
-const { fetchAdviser, fetchInterns, insertAnnouncement, fetchAnnouncements, deleteAnnouncement } = require('./database.js');
+const { fetchAdviser, fetchInterns, insertAnnouncement, insertNewRequirement, insertRequirementForInterns, fetchAnnouncements, deleteAnnouncement } = require('./database.js');
 const { fetchStudents, fetchPendingStudents, fetchPendingStudentsByName, fetchPendingStudentsByClassCode, fetchPendingStudentsByAddress,
     fetchPendingStudentsByCompany, fetchPendingStudentsByWorkType, updateStatus, fetchInternDailyReports,
     fetchRequirementsByStudentId, fetchRequirementsByInternId, updateRemarks, fetchSupervisor, fetchWeeklyReports, uploadPicture } = require('./database.js');
@@ -238,6 +238,7 @@ app.get("/ojt-dashboard/requirements-reports/:internName", async (req, res) => {
 
 
 
+
 // run node app.js then access http://localhost:8080/ojt-pending/
 app.get("/ojt-pending", async (req, res) => {
     try {
@@ -287,17 +288,7 @@ app.get('/ojt-pending/sort', async (req, res) => {
     }
 });
 
-app.get('/ojt-pending/requirements', async (req, res) => {
-    const studentId = req.query.studentId;
 
-    try {
-        const requirements = await fetchRequirementsByStudentId(studentId);
-        res.json(requirements);
-    } catch (error) {
-        console.error('Error fetching requirements:', error.message);
-        res.status(500).json({ error: 'Internal Server Error' });
-    }
-});
 
 
 //POST REQUESTS
@@ -384,7 +375,6 @@ app.get('/logout', (req, res) => {
 });
 
 
-
 app.post('/ojt-dashboard/postannouncement', async (req, res) => {
     const sender = req.body['sender'];
     const recipient = req.body.recipient;
@@ -397,6 +387,20 @@ app.post('/ojt-dashboard/postannouncement', async (req, res) => {
     res.redirect('/ojt-dashboard');
 
 });
+
+app.post('/ojt-dashboard/postrequirement', async (req, res) => {
+    const requirementName = req.body['requirement-name'];
+    const recipientIDs = req.body['intern-recipient']; // Assuming this is an array of intern IDs
+    try {
+        const requirementID = await insertNewRequirement(requirementName);
+        await insertRequirementForInterns(requirementID, recipientIDs);
+        res.redirect('/ojt-dashboard');
+    } catch (error) {
+        console.error('Error:', error);
+        res.status(500).send("An error occurred while processing the requirement.");
+    }
+});
+
 
 app.post('/ojt-dashboard/deleteannouncement', async (req, res) => {
     const announcementid = req.body['announcementid'];

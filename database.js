@@ -136,6 +136,16 @@ async function fetchPendingStudentsByWorkType(adviserID) {
     }
 }
 
+async function fetchAllRequirements() {
+    try {
+        const [rows] = await pool.query(`SELECT * FROM requirements;`);
+        return rows;
+    } catch (error) {
+        console.error('Error executing query:', error.message);
+        throw error;
+    }
+}
+
 
 async function fetchRequirementsByStudentId(studentId) {
     try {
@@ -157,6 +167,25 @@ async function fetchRequirementsByStudentId(studentId) {
                 interns.status = 'PENDING' AND students.studentID = ?
         `, [studentId]);
         return rows;
+    } catch (error) {
+        console.error('Error executing query:', error.message);
+        throw error;
+    }
+}
+
+async function fetchUnassignedRequirements(internID) {
+    try {
+        const [requirements] = await pool.query(`
+            SELECT
+                r.reqid,
+                r.requirementname
+            FROM
+                requirements r
+            LEFT JOIN internrequirements ir ON ir.reqid = r.reqid AND ir.internid = ?
+            WHERE
+                ir.reqid IS NULL
+        `, [internID]);
+        return requirements;
     } catch (error) {
         console.error('Error executing query:', error.message);
         throw error;
@@ -317,35 +346,26 @@ async function insertAnnouncement(sender, recipient, subject, announcement) {
         throw error;
     }
 }
+
 async function insertNewRequirement(requirementName) {
     try {
-        const numofrows = await pool.query('SELECT COUNT(reqid) + 1 as reqid FROM requirements;');
-        const reqid = numofrows[0][0].reqid;
-        const query = `INSERT INTO requirements (reqid, requirementname)
-        VALUES (?,?);`;
-        const [result] = await pool.query(query, [reqid, requirementName]);
-        return requirementName;
+        const query = `INSERT INTO requirements (requirementname) VALUES (?);`;
+        const [result] = await pool.query(query, [requirementName]);
+        return result.insertId; // This should now return the auto-generated ID of the new requirement
     } catch (error) {
         console.error('Error executing query:', error.message);
         throw error;
     }
 }
 
-async function insertRequirementForInterns(requirementID, internIDs) {
+async function insertInternRequirement(internid, reqid) {
     try {
-        // Begin a transaction
-        // await pool.beginTransaction();
-
-        const query = `INSERT INTO internrequirements (internid, reqid) VALUES (?, ?)`;
-
-        for (const internID of internIDs) {
-            await pool.query(query, [internID, requirementID]);
-        }
-
-        await pool.commit();
+        const query = `INSERT INTO internrequirements (internid, reqid, datesubmitted, status, remarks)
+         VALUES (?, ?, NULL, 'PENDING', NULL)`;
+        const [result] = await pool.query(query, [internid, reqid]);
+        return result.insertId;
     } catch (error) {
         console.error('Error executing query:', error.message);
-        await pool.rollback();
         throw error;
     }
 }
@@ -578,9 +598,11 @@ module.exports = {
     fetchAdviser,
     insertAnnouncement,
     insertNewRequirement,
-    insertRequirementForInterns,
+    insertInternRequirement,
     fetchDailyReports,
     fetchInternDailyReports,
+    fetchUnassignedRequirements,
+    fetchAllRequirements,
     fetchInternId,
     fetchSupervisor,
     fetchWeeklyReports,

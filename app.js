@@ -26,7 +26,7 @@ app.set('views', path.join(__dirname, 'ojt-monitoring-files'));
 
 
 // Import functions from database.js
-const { fetchStudent, authenticateAdviser, hashAdviserPasswords, fetchInternId } = require('./database.js');
+const { fetchStudent, authenticateAdviser, hashAdviserPasswords, fetchInternId, updateInternRemarks } = require('./database.js');
 const { fetchAdviser, fetchInterns, insertAnnouncement, fetchAnnouncements, deleteAnnouncement } = require('./database.js');
 const { fetchStudents, fetchPendingStudents, fetchPendingStudentsByName, fetchPendingStudentsByClassCode, fetchPendingStudentsByAddress,
     fetchPendingStudentsByCompany, fetchPendingStudentsByWorkType, updateStatus, fetchAllRequirements, insertInternRequirement,
@@ -374,6 +374,18 @@ app.post('/update-remarks', async (req, res) => {
     }
 });
 
+app.post('/update-intern-remarks', async (req, res) => {
+    const { internId, remarks } = req.body;
+    console.log('Received Update Intern Remarks Request - Intern ID:', internId, 'Remarks:', remarks);
+
+    try {
+        await updateInternRemarks(internId, remarks);
+        res.json({ message: 'Remarks updated successfully' });
+    } catch (error) {
+        console.error('Error updating intern remarks:', error.message);
+        res.status(500).json({ error: 'Internal Server Error' });
+    }
+});
 
 // update the '/update-status' route in ojt-pending-page
 app.post('/update-status', async (req, res) => {
@@ -391,6 +403,9 @@ app.post('/update-status', async (req, res) => {
         res.status(500).send('Warning: Internal Server Error');
     }
 });
+
+
+
 
 
 // handling of the post requst (authenticating advisor in login)

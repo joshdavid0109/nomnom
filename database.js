@@ -281,6 +281,24 @@ async function updateRemarks(studentId, remarks) {
     }
 }
 
+// updates the status in the interns table
+async function updateInternRemarks(internId, remarks) {
+    try {
+        console.log('Updating remarks for Intern ID:', internId, 'Remarks:', remarks);
+
+        // Loop through the remarks and update each one in the database
+        for (let i = 0; i < remarks.length; i++) {
+            await pool.query('UPDATE internrequirements SET remarks = ? WHERE internid = ? AND reqid = ?',
+                [remarks[i], internId, i + 1]); // Assuming reqid starts from 1
+        }
+
+        console.log('Remarks updated successfully');
+    } catch (error) {
+        console.error('Error executing query:', error.message);
+        throw error;
+    }
+}
+
 async function authenticateAdviser(adviserEmail, password) {
     try {
         const [rows] = await pool.query("SELECT adviserID, adviserEmail, password FROM advisers WHERE adviserEmail = ? LIMIT 1", [adviserEmail]);
@@ -361,7 +379,7 @@ async function insertNewRequirement(requirementName) {
 async function insertInternRequirement(internid, reqid) {
     try {
         const query = `INSERT INTO internrequirements (internid, reqid, datesubmitted, status, remarks)
-         VALUES (?, ?, NULL, 'PENDING', NULL)`;
+         VALUES (?, ?, '', 'PENDING', '')`;
         const [result] = await pool.query(query, [internid, reqid]);
         return result.insertId;
     } catch (error) {
@@ -606,6 +624,7 @@ module.exports = {
     fetchInternId,
     fetchSupervisor,
     fetchWeeklyReports,
+    updateInternRemarks,
     closeDatabase,
 
 };

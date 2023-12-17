@@ -1146,6 +1146,12 @@ td {
     display: none;
 }
 
+.save-btn {
+    display: none;
+}
+
+
+
 /* Requirements box styling */
 .requirements-box {
     margin: 1% auto;

@@ -162,6 +162,10 @@ main.container
                   tbody
         button#addRequirementButton 
           a(href='#requirement-pop-up') Add Requirement
+        .button-box
+          .button-holder
+              //- button.add-btn Add Requirement
+              button.save-btn Save
 
   section.third-column
     .announcement-column
@@ -296,6 +300,8 @@ form(action='/ojt-dashboard/postrequirement' id="requirement-form" method='POST'
 
 script(src="https://code.jquery.com/jquery-3.6.0.min.js")   
 script.
+
+  
 
     document.addEventListener('DOMContentLoaded', function() {
           // Get all the table rows with the class 'intern-row'
@@ -694,24 +700,34 @@ script.
   });
 
   document.addEventListener('DOMContentLoaded', (event) => {
-  const reportLinks = document.querySelectorAll('.report-links a');
-  const addRequirementButton = document.getElementById('addRequirementButton');
+      const reportLinks = document.querySelectorAll('.report-links a');
+      const addRequirementButton = document.getElementById('addRequirementButton');
+      const saveButton = document.querySelector('.save-btn'); // Get the save button
+      let currentReportType = '';
 
-  reportLinks.forEach(link => {
-    link.addEventListener('click', function() {
-      // Remove 'active' class from all links and then add to the clicked one
-      reportLinks.forEach(l => l.classList.remove('active'));
-      this.classList.add('active');
+      reportLinks.forEach(link => {
+          link.addEventListener('click', function() {
+              // Update the current report type
+              currentReportType = this.classList.contains('daily-report') ? 'daily' :
+                                  this.classList.contains('weekly-report') ? 'weekly' :
+                                  'requirements';
 
-      // Show the "Add Requirement" button only if the "Requirements" link is clicked
-      if (this.classList.contains('requirements')) {
-        addRequirementButton.style.display = 'block';
-      } else {
-        addRequirementButton.style.display = 'none';
-      }
+              // Active link styling
+              reportLinks.forEach(l => l.classList.remove('active'));
+              this.classList.add('active');
+
+              // Toggle the "Add Requirement" button display
+              if (currentReportType === 'requirements') {
+                  addRequirementButton.style.display = 'block';
+                  saveButton.style.display = 'block'; // Show the save button
+              } else {
+                  addRequirementButton.style.display = 'none';
+                  saveButton.style.display = 'none'; // Hide the save button
+              }
+          });
       });
-    });
   });
+
 
   document.addEventListener('DOMContentLoaded', function() {
     // Back button click event
@@ -792,7 +808,50 @@ script.
       }
   });
 
+  document.addEventListener('DOMContentLoaded', function() {
+      // Make remarks cells editable and track original content
+      var editableCells = document.querySelectorAll('.remarks-cell');
+      editableCells.forEach(function(cell) {
+          cell.addEventListener('focus', function() {
+              // Store the original content for comparison later
+              cell.dataset.originalContent = cell.textContent;
+          });
+      });
+  });
 
+  document.querySelector('.save-btn').addEventListener('click', function() {
+      var updatedRemarks = [];
+      var remarksChanged = false; // Flag to check if any remark has been changed
+      
+      // Retrieve internId from the hidden input element
+      var internId = document.getElementById('internid').value;
 
+      // Collect all updated remarks and check if any have been changed
+      var editableCells = document.querySelectorAll('.remarks-cell');
+      editableCells.forEach(function(cell) {
+          if (cell.dataset.originalContent !== cell.textContent) {
+              updatedRemarks.push(cell.textContent);
+              remarksChanged = true; // Set the flag to true if any remark has been changed
+          }
+      });
 
+      // Check if intern ID is present and any remarks have been changed
+      if (internId && remarksChanged) {
+          $.ajax({
+              type: 'POST',
+              url: '/update-intern-remarks',
+              data: { internId: internId, remarks: updatedRemarks },
+              success: function(response) {
+                  console.log(response.message);
+                  alert('Remarks updated successfully!');
+              },
+              error: function(error) {
+                  console.error('Error updating intern remarks:', error);
+                  alert('Error updating remarks.');
+              }
+          });
+      } else {
+          alert('No intern selected or no remarks updated.');
+      }
+  });
 

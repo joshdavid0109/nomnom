@@ -353,6 +353,7 @@ app.post('/ojt-dashboard/deleteannouncement', async (req, res) => {
 
 
 app.post('/ojt-dashboard/uploadprofilepicture', async (req, res) => {
+    console.log("upload")
 
     if (!req.files || Object.keys(req.files).length === 0) {
         return res.status(400).send('No files were uploaded.');

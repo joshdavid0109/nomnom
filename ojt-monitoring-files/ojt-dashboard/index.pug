@@ -21,7 +21,7 @@ main.container
       li
         a(href='/ojt-pending') PENDING
       li
-        a(href='#') ABOUT US
+        a(href='/ojt-about-us') ABOUT US
       li
         a(href="#") 
         form(action='/logout' method="GET" id="logout-form")
@@ -106,7 +106,8 @@ main.container
               th
                 | STATUS
             each intern in interns
-              tr.table-data(data-intern-id=intern.studentname class='intern-row')
+              tr.table-data(data-intern-id=intern.studentname data-internid=intern.internid class='intern-row')
+                input#intern-id(type="hidden" name="internid" value=intern.internid)
                 td= intern.studentname
                 td= intern.classcode
                 td= intern.companyname
@@ -159,6 +160,12 @@ main.container
                       th Remarks 
                       th Status
                   tbody
+        .button-holder
+          button#addRequirementButton 
+            a#addreqbtn(href='#requirement-pop-up') Add Requirement
+          .button-box
+              //- button.add-btn Add Requirement
+             button.save-btn#save-btn Save
 
   section.third-column
     .announcement-column
@@ -226,7 +233,7 @@ form(action='/ojt-dashboard/postannouncement' id="recipient-form" method='POST')
             input(type="hidden" name="sender", value=adviser.adviserID)
             input(type="hidden" name="recipient", value="0")
             input.create-post-button(id="submitbutton" type="submit" value="SUBMIT") 
-  | &gt;
+  
   #announcement-pop-up1.modal(action='submit')
     .content
       a.close(href='#main') &Cross;
@@ -505,16 +512,16 @@ script.
       }
 
       // closes the popup container
-      function closePopup() {
-            document.querySelector('.popup-container').style.display = 'none';
-            console.log('close')
-      
+        function closePopup() {
+        document.querySelector('.popup-container').style.display = 'none';
+        resetReportLinkToDefault();
+        console.log('close');
       }
 
       // adds click event listeners to the first <td> element within each row and calls the openPopup function
       function updateReportLinksInternName(internName) {
-    document.querySelectorAll('.daily-report, .weekly-report, .requirements').forEach(element => {
-        element.setAttribute('data-intern-name', internName);
+      document.querySelectorAll('.daily-report, .weekly-report, .requirements').forEach(element => {
+      element.setAttribute('data-intern-name', internName);
     });
   }
 
@@ -523,7 +530,9 @@ script.
     fetch(url)
         .then(response => response.text())
         .then(html => {
-            document.getElementById('studentName').innerHTML = internName;
+            document.getElementById('studentName').innerHTML = internName;  
+            document.getElementById('student-name').innerText = internName;
+
             updateTableHeaders(reportType); // Update table headers
             document.querySelector('.popup-container').style.display = 'block';
             document.querySelector('.popup-scrollable table tbody').innerHTML = html;
@@ -558,7 +567,8 @@ script.
   });
   const reportTableStructures = {
     daily: ["Date", "Time in", "Time out", "Supervisor", "Description", "Hours", "Supporting Documents", "Remarks", "Status"],
-    weekly: ["Day", "Date", "Description", "Hours"]
+    weekly: ["Day", "Date", "Description", "Hours"],
+    requirements: ["Requirements", "Date Submitted", "Remarks", "Status"]
   };
 
   function updateTableHeaders(reportType) {
@@ -629,61 +639,91 @@ script.
     });
   });
 
-
-
-        // Assuming this code is running on the client side (in a browser)
- document.getElementById('submit-button').addEventListener('click', function() {
-  console.log("submit")
-    // Perform asynchronous form submission
-    const formData = new FormData(document.getElementById('confirmation-form'));
-
-    console.log("before")
-    console.log(formData)
-    
-    fetch('/ojt-dashboard/deleteannouncement', {
-      method: 'POST',
-      body: formData
-    })
-    .then(response => {
-      console.log("after fetch")
-      if (response.ok) {
-        console.log('Announcement deleted successfully');
-        // Close the modal using your preferred method (e.g., jQuery, Bootstrap modal functions)
-        // For example, if you are using Bootstrap modal:
-      } else {
-        console.error('Failed to delete announcement');
-      }
-    })
-    .catch(err => {
-      console.error('Error:', err.message);
-    });
-  });
-
-
   document.addEventListener('DOMContentLoaded', (event) => {
-    const reportLinks = document.querySelectorAll('.report-links a');
+      const reportLinks = document.querySelectorAll('.report-links a');
+      const addRequirementButton = document.getElementById('addRequirementButton');
+      const saveButton = document.querySelector('.save-btn'); // Get the save button
+      let currentReportType = '';
 
-    reportLinks.forEach(link => {
-        link.addEventListener('click', function() {
-            reportLinks.forEach(l => l.classList.remove('active'));
-            this.classList.add('active');
-        });
-    });
+      reportLinks.forEach(link => {
+          link.addEventListener('click', function() {
+              // Update the current report type
+              currentReportType = this.classList.contains('daily-report') ? 'daily' :
+                                  this.classList.contains('weekly-report') ? 'weekly' :
+                                  'requirements';
+
+              // Active link styling
+              reportLinks.forEach(l => l.classList.remove('active'));
+              this.classList.add('active');
+
+              // Toggle the "Add Requirement" button display
+              if (currentReportType === 'requirements') {
+                  addRequirementButton.style.display = 'block';
+                  saveButton.style.display = 'block'; // Show the save button
+              } else {
+                  addRequirementButton.style.display = 'none';
+                  saveButton.style.display = 'none'; // Hide the save button
+              }
+          });
+      });
   });
 
 
                    
 
   document.addEventListener('DOMContentLoaded', function() {
-    // Back button click event
-    document.getElementById('back-page').addEventListener('click', function() {
-      console.log("Back button clicked");
-      // Your logic for handling the Back button click goes here
-    });
+      // Make remarks cells editable and track original content
+      var editableCells = document.querySelectorAll('.remarks-cell');
 
-    // Next Page button click event
-    document.getElementById('nextPage').addEventListener('click', function() {
-      console.log("Next Page button clicked");
-      // Your logic for handling the Next Page button click goes here
-    });
+      editableCells.forEach(function(cell) {
+        
+        console.log(cell.textContent);
+          cell.addEventListener('focus', function() {
+              // Store the original content for comparison later
+              cell.dataset.originalContent = cell.textContent;
+          });
+      });
+  });
+
+  document.querySelector('.save-btn').addEventListener('click', function() {
+      var updatedRemarks = [];
+      var remarksChanged = false; // Flag to check if any remark has been changed
+      
+      // Retrieve internId from the hidden input element
+      var internId = document.getElementById('internid').value;
+
+      // Collect all updated remarks and check if any have been changed
+      var editableCells = document.querySelectorAll('.remarks-cell');
+      editableCells.forEach(function(cell) {
+          if (cell.dataset.originalContent != cell.textContent) {
+              console.log("hello cell");
+              console.log(cell.textContent);
+              console.log(cell.originalContent);
+              updatedRemarks.push(cell.textContent);
+              
+              remarksChanged = true; // Set the flag to true if any remark has been changed
+              return;
+          }
+  });
+
+      // Check if intern ID is present and any remarks have been changed
+      if (internId && remarksChanged) {
+          $.ajax({
+              type: 'POST',
+              url: '/update-intern-remarks',
+              data: { internId: internId, remarks: updatedRemarks },
+              success: function(response) {
+                  remarksChanged = false;
+                  console.log(response.message);
+                  updatedRemarks = [];
+              },
+              error: function(error) {
+                  console.error('Error updating intern remarks:', error);
+              }
+          });
+
+         
+      } else {
+          alert('No intern selected or no remarks updated.');
+      }
   });

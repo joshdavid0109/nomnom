@@ -17,6 +17,7 @@ app.use(session({
 }));
 
 app.use('/ojt-images', express.static(path.join(__dirname, 'ojt-images')));
+app.use('/ojt-about-us', express.static(path.join(__dirname, 'ojt-monitoring-files', 'ojt-about-us')))
 app.use('/ojt-login-page', express.static(path.join(__dirname, 'ojt-monitoring-files', 'ojt-login-page')));
 app.use('/ojt-pending', express.static(path.join(__dirname, 'ojt-monitoring-files', 'ojt-pending')));
 app.use('/ojt-dashboard', express.static(path.join(__dirname, 'ojt-monitoring-files', 'ojt-dashboard')))
@@ -26,13 +27,28 @@ app.set('views', path.join(__dirname, 'ojt-monitoring-files'));
 
 
 // Import functions from database.js
-const { fetchStudent, authenticateAdviser, hashAdviserPasswords, fetchInternId } = require('./database.js');
+const { fetchStudent, authenticateAdviser, hashAdviserPasswords, fetchInternId, updateInternRemarks } = require('./database.js');
 const { fetchAdviser, fetchInterns, insertAnnouncement, fetchAnnouncements, deleteAnnouncement } = require('./database.js');
 const { fetchStudents, fetchPendingStudents, fetchPendingStudentsByName, fetchPendingStudentsByClassCode, fetchPendingStudentsByAddress,
-    fetchPendingStudentsByCompany, updateStatus, fetchInternDailyReports,
-    fetchRequirementsByStudentId, updateRemarks, fetchSupervisor, fetchWeeklyReports, uploadPicture } = require('./database.js');
+    fetchPendingStudentsByCompany, fetchPendingStudentsByWorkType, updateStatus, fetchAllRequirements, insertInternRequirement,
+    fetchInternDailyReports, fetchUnassignedRequirements, insertNewRequirement, fetchRequirementsByStudentId, fetchRequirementsByInternId, updateRemarks, fetchSupervisor, fetchWeeklyReports, uploadPicture } = require('./database.js');
 
 //GET 
+// // run node app.js then access http://localhost:8080/ojt-login-page/
+app.get("/", async (req, res) => {
+    try {
+        if (req.session.isLoggedIn) {
+
+            res.redirect('/ojt-dashboard');
+        }
+
+        const students = await fetchStudents();
+        res.render('ojt-login-page/', { students })
+    } catch (error) {
+        console.error('Error:', error.message);
+        res.status(500).send('Warning: Internal Server Error');
+    }
+});
 
 // // run node app.js then access http://localhost:8080/ojt-login-page/
 app.get("/ojt-login-page", async (req, res) => {
@@ -56,6 +72,9 @@ app.get("/ojt-dashboard", async (req, res) => {
         const interns = await fetchInterns(req.session.adviserID);
         let pendingcount = 0, total = interns.length, finished = 0;
 
+        // Prepare a map or object to hold the unassigned requirements for each intern
+
+
         for (let i = 0; i < interns.length; i++) {
             let intern = interns[i];
             switch (intern.status) {
@@ -66,9 +85,12 @@ app.get("/ojt-dashboard", async (req, res) => {
                     finished++;
                     break;
             }
+
+
         }
 
-        reports = {} // temporarry still doing
+        let unassignedRequirementsMap = {};
+        reports = {}; // Temporary still doing
 
         if (adviser) {
             const announcements = await fetchAnnouncements(adviser.adviserID)
@@ -80,7 +102,8 @@ app.get("/ojt-dashboard", async (req, res) => {
                 pendingcount,
                 finished,
                 reports,
-                total
+                total,
+                unassignedRequirementsMap
             });
         } else {
             res.redirect('/ojt-login-page');
@@ -91,6 +114,7 @@ app.get("/ojt-dashboard", async (req, res) => {
         res.status(500).send("Warning: Internal Server Error");
     }
 });
+
 
 app.get("/ojt-dashboard/daily-reports/:internName", async (req, res) => {
     try {
@@ -149,13 +173,13 @@ app.get("/ojt-dashboard/weekly-reports/:internName", async (req, res) => {
 
         console.log(internId + ' is ' + internName);
 
-        // Fetch the reports using the intern ID
+        // Fetch the full week reports using the intern ID
         const weeklyReports = await fetchWeeklyReports(internId);
 
         // Check if weeklyReports array is empty
         if (weeklyReports.length === 0) {
             return res.render('ojt-dashboard/views/no-reports.pug', {
-                message: 'No weekly reports found for ' + internName,
+                message: 'No full week reports found for ' + internName,
                 colspan: 4,
                 reportsExist: false
             });
@@ -165,7 +189,7 @@ app.get("/ojt-dashboard/weekly-reports/:internName", async (req, res) => {
             report.date = new Date(report.date).toDateString(); // Format the date
         });
 
-        console.log('Weekly Reports:', weeklyReports);
+        console.log('Full Week Reports:', weeklyReports);
 
         // Render the weekly report view with the reports data
         res.render('ojt-dashboard/views/weekly-report.pug', { weeklyReports });
@@ -175,6 +199,110 @@ app.get("/ojt-dashboard/weekly-reports/:internName", async (req, res) => {
     }
 });
 
+app.get("/ojt-dashboard/requirements-reports/:internName", async (req, res) => {
+    try {
+        const internName = req.params.internName;
+        console.log('Fetching reports for intern:', internName);
+
+        // Fetch the intern ID
+        const internIdResult = await fetchInternId(internName);
+        const internId = internIdResult[0]?.internid;
+        if (!internId) {
+            console.log('No intern found for name:', internName);
+            return res.status(404).send("Intern not found");
+        }
+
+        console.log(internId + ' is ' + internName);
+
+        // Fetch the assigned requirements using the intern ID
+        const assignedRequirements = await fetchRequirementsByInternId(internId);
+
+        // Format dates in assigned requirements
+        assignedRequirements.forEach(requirement => {
+            if (requirement.datesubmitted) {
+                requirement.datesubmitted = new Date(requirement.datesubmitted).toDateString();
+            }
+        });
+
+        console.log('Assigned Requirements:', assignedRequirements);
+
+
+        // Render the intern requirements view with the requirements data
+        res.render('ojt-dashboard/views/intern-requirement.pug', {
+            assignedRequirements
+        });
+    } catch (error) {
+        console.error('Error', error);
+        res.status(500).send("Error: Internal Server Error");
+    }
+});
+
+app.get("/fetch-unassigned-requirements/:internId", async (req, res) => {
+    try {
+        const internId = req.params.internId;
+        console.log('Fetching unassigned requirements for intern ID: ' + internId);
+        const internIdResult = await fetchInternId(internId);
+        console.log('Intern ID result: ' + JSON.stringify(internIdResult));
+
+        // Assuming internIdResult is an object and the actual ID is a property of this object
+        const actualInternId = internIdResult[0].internid;
+        console.log('this is beign sent' + actualInternId)
+
+        const unassignedRequirements = await fetchUnassignedRequirements(actualInternId);
+        console.log('Unassigned requirements from server: ', unassignedRequirements);
+        res.json(unassignedRequirements);
+    } catch (error) {
+        console.error('Error:', error);
+        res.status(500).send('Internal Server Error');
+    }
+});
+
+
+
+app.post('/ojt-dashboard/postrequirement', async (req, res) => {
+    const existingRequirementId = req.body['existing-requirement-dropdown'];
+    const newRequirementName = req.body['new-requirement-name'];
+    const internId = req.body['intern-id'];
+
+    try {
+        let requirementId;
+
+        if (newRequirementName) {
+            requirementId = await insertNewRequirement(newRequirementName);
+            console.log("New Requirement ID: ", requirementId); // Log for debugging
+            await insertInternRequirement(internId, requirementId);
+        } else if (existingRequirementId) {
+            requirementId = existingRequirementId;
+            await insertInternRequirement(internId, requirementId);
+        } else {
+            // Send a response with status 400 (Bad Request) and a message
+            return res.status(400).json({ message: "Pick a requirement please" });
+        }
+
+        res.redirect('/ojt-dashboard');
+    } catch (error) {
+        console.error('Error:', error);
+        // Send a response with status 500 (Internal Server Error) and a message
+        return res.status(500).json({ message: "An error occurred while processing the requirement." });
+    }
+});
+
+
+
+
+
+
+app.get('/ojt-pending/requirements', async (req, res) => {
+    const studentId = req.query.studentId;
+
+    try {
+        const requirements = await fetchRequirementsByStudentId(studentId);
+        res.json(requirements);
+    } catch (error) {
+        console.error('Error fetching requirements:', error.message);
+        res.status(500).json({ error: 'Internal Server Error' });
+    }
+});
 
 
 
@@ -214,6 +342,8 @@ app.get('/ojt-pending/sort', async (req, res) => {
             case 'address':
                 pendingStudents = await fetchPendingStudentsByAddress(req.session.adviserID);
                 break;
+            case 'worktype':
+                pendingStudents = await fetchPendingStudentsByWorkType(req.session.adviserID);
             default:
                 pendingStudents = await fetchPendingStudents(req.session.adviserID);
         }
@@ -221,18 +351,6 @@ app.get('/ojt-pending/sort', async (req, res) => {
         res.json(pendingStudents);
     } catch (error) {
         console.error('Error:', error.message);
-        res.status(500).json({ error: 'Internal Server Error' });
-    }
-});
-
-app.get('/ojt-pending/requirements', async (req, res) => {
-    const studentId = req.query.studentId;
-
-    try {
-        const requirements = await fetchRequirementsByStudentId(studentId);
-        res.json(requirements);
-    } catch (error) {
-        console.error('Error fetching requirements:', error.message);
         res.status(500).json({ error: 'Internal Server Error' });
     }
 });
@@ -257,6 +375,19 @@ app.post('/update-remarks', async (req, res) => {
     }
 });
 
+app.post('/update-intern-remarks', async (req, res) => {
+    const { internId, remarks } = req.body;
+    console.log(req.body)
+    console.log('Received Update Intern Remarks Request - Intern ID:', internId, 'Remarks:', remarks);
+
+    try {
+        await updateInternRemarks(internId, remarks);
+        res.json({ message: 'Remarks updated successfully' });
+    } catch (error) {
+        console.error('Error updating intern remarks:', error.message);
+        res.status(500).json({ error: 'Internal Server Error' });
+    }
+});
 
 // update the '/update-status' route in ojt-pending-page
 app.post('/update-status', async (req, res) => {
@@ -276,6 +407,9 @@ app.post('/update-status', async (req, res) => {
 });
 
 
+
+
+
 // handling of the post requst (authenticating advisor in login)
 app.post("/ojt-login-page", async (req, res) => {
     const { adviserEmail, password } = req.body;
@@ -283,16 +417,14 @@ app.post("/ojt-login-page", async (req, res) => {
     try {
         const adviser = await authenticateAdviser(adviserEmail, password);
         if (adviser) {
-            console.log('SERVER: LOGGING IN email = ' + adviserEmail + ' ' + 'password = ' + password)
-
+            console.log('SERVER: LOGGING IN email = ' + adviserEmail + ' password = ' + password);
             req.session.adviserID = adviser.adviserID;
             req.session.isLoggedIn = true;
-
             res.redirect('/ojt-dashboard');
         } else {
-            console.log('SERVER: NOT AN ADVISER = email = ' + adviserEmail + ' ' + 'password = ' + password)
+            console.log('SERVER: NOT AN ADVISER = email = ' + adviserEmail + ' password = ' + password);
+            res.status(401).send('false'); // Send back a simple 'false' string
         }
-
     } catch (error) {
         console.error('Error:', error.message);
         res.status(500).send('Warning: Internal Server Error');
@@ -310,19 +442,34 @@ app.get("/some-protected-route", (req, res) => {
     }
 });
 
+// run node app.js then access http://localhost:8080/ojt-pending/
+app.get("/ojt-about-us", async (req, res) => {
+    try {
+        const adviser = await fetchAdviser(req.session.adviserID);
+        if (adviser) {
+           
+            res.render('ojt-about-us/index', { adviser })
+        } else {
+            res.redirect('/ojt-login-page');
+        }
+    } catch (error) {
+        console.error('Error:', error.message);
+        res.status(500).send('Warning: Internal Server Error');
+    }
+});
+
 
 
 app.get('/logout', (req, res) => {
     req.session.destroy(err => {
         if (err) {
-            console.log("A problem occured while logging out: "+ err.message)
+            console.log("A problem occured while logging out: " + err.message)
         }
         console.log("pakilog out")
         adviser = {};
         res.redirect('/ojt-login-page');
     });
 });
-
 
 
 app.post('/ojt-dashboard/postannouncement', async (req, res) => {
@@ -338,9 +485,12 @@ app.post('/ojt-dashboard/postannouncement', async (req, res) => {
 
 });
 
+
+
+
 app.post('/ojt-dashboard/deleteannouncement', async (req, res) => {
     const announcementid = req.body['announcementid'];
-    
+
     try {
         deleteAnnouncement(announcementid);
         res.redirect('/ojt-dashboard')

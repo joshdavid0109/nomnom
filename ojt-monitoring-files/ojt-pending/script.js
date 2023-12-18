@@ -96,6 +96,7 @@ async function openPopup(studentData) {
 // fetch student requirements
 async function fetchRequirements(studentId) {
   try {
+      
       const response = await fetch(`/ojt-pending/requirements?studentId=${studentId}`);
       const requirements = await response.json();
       return requirements;
@@ -131,7 +132,7 @@ function updateRequirementsTable(requirements) {
       const newRow = document.createElement('tr');
       newRow.innerHTML = `
           <td>${req.requirementname}</td>
-          <td>${req.datesubmitted}</td>
+          <td>${req.datesubmitted || ''}</td>
           <td class="editable" contenteditable="true">${req.remarks || 'Type here your remarks...'}</td>
           <td>${req.status}</td>
       `;

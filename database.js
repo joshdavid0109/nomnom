@@ -32,7 +32,7 @@ async function fetchStudents() {
 async function fetchPendingStudents(adviserID) {
     try {
         const [rows] = await pool.query(`
-        SELECT s.studentid, s.studentName, s.classcode, c.companyname, c.companyaddress
+        SELECT s.studentid, s.studentName, s.classcode, c.companyname, c.companyaddress, i.worktype
         FROM interns i
             JOIN students s ON i.studentid = s.studentid
             JOIN company c ON i.companyid = c.companyid
@@ -118,6 +118,34 @@ async function fetchPendingStudentsByAddress(adviserID) {
     }
 }
 
+async function fetchPendingStudentsByWorkType(adviserID) {
+    try {
+        const [rows] = await pool.query(`
+        SELECT s.studentid, s.studentName, s.classcode, c.companyname, c.companyaddress, i.worktype
+        FROM interns i
+            JOIN students s ON i.studentid = s.studentid
+            JOIN company c ON i.companyid = c.companyid
+            WHERE i.status = 'PENDING' AND i.adviserID = ?
+            ORDER BY i.worktype;
+        `, [adviserID]);
+        console.log('Fetch Pending Students Query Result:', rows);
+        return rows;
+    } catch (error) {
+        console.error('Error executing query:', error.message);
+        throw error;
+    }
+}
+
+async function fetchAllRequirements() {
+    try {
+        const [rows] = await pool.query(`SELECT * FROM requirements;`);
+        return rows;
+    } catch (error) {
+        console.error('Error executing query:', error.message);
+        throw error;
+    }
+}
+
 
 async function fetchRequirementsByStudentId(studentId) {
     try {
@@ -138,6 +166,47 @@ async function fetchRequirementsByStudentId(studentId) {
             WHERE
                 interns.status = 'ACCEPTED' AND students.studentID = ?
         `, [studentId]);
+        return rows;
+    } catch (error) {
+        console.error('Error executing query:', error.message);
+        throw error;
+    }
+}
+
+async function fetchUnassignedRequirements(internID) {
+    try {
+        const [requirements] = await pool.query(`
+            SELECT
+                r.reqid,
+                r.requirementname
+            FROM
+                requirements r
+            LEFT JOIN internrequirements ir ON ir.reqid = r.reqid AND ir.internid = ?
+            WHERE
+                ir.reqid IS NULL
+        `, [internID]);
+        return requirements;
+    } catch (error) {
+        console.error('Error executing query:', error.message);
+        throw error;
+    }
+}
+
+async function fetchRequirementsByInternId(internID) {
+    try {
+        const [rows] = await pool.query(`
+            SELECT
+                requirements.requirementname,
+                internrequirements.datesubmitted,
+                internrequirements.remarks,
+                internrequirements.status
+            FROM
+                internrequirements
+            JOIN
+                requirements ON internrequirements.reqid = requirements.reqid
+            WHERE
+                internrequirements.internid = ?
+        `, [internID]);
         return rows;
     } catch (error) {
         console.error('Error executing query:', error.message);
@@ -212,6 +281,24 @@ async function updateRemarks(studentId, remarks) {
     }
 }
 
+// updates the status in the interns table
+async function updateInternRemarks(internId, remarks) {
+    try {
+        console.log('Updating remarks for Intern ID:', internId, 'Remarks:', remarks);
+
+        // Loop through the remarks and update each one in the database
+        for (let i = 0; i < remarks.length; i++) {
+            await pool.query('UPDATE internrequirements SET remarks = ? WHERE internid = ? AND reqid = ?',
+                [remarks[i], internId, i + 1]); // Assuming reqid starts from 1
+        }
+
+        console.log('Remarks updated successfully');
+    } catch (error) {
+        console.error('Error executing query:', error.message);
+        throw error;
+    }
+}
+
 async function authenticateAdviser(adviserEmail, password) {
     try {
         const [rows] = await pool.query("SELECT adviserID, adviserEmail, password FROM advisers WHERE adviserEmail = ? LIMIT 1", [adviserEmail]);
@@ -255,14 +342,11 @@ async function fetchAdviser(adviserID) {
 
 async function insertAnnouncement(sender, recipient, subject, announcement) {
 
-
     // Get the current date
     const now = new Date();
 
     // Format the date as YYYY-MM-DD
     const date = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
-
-
 
     try {
         if (recipient.length == 1) {
@@ -277,6 +361,29 @@ async function insertAnnouncement(sender, recipient, subject, announcement) {
         }
     } catch (error) {
         console.error('Error executing qeury:', error.message);
+        throw error;
+    }
+}
+
+async function insertNewRequirement(requirementName) {
+    try {
+        const query = `INSERT INTO requirements (requirementname) VALUES (?);`;
+        const [result] = await pool.query(query, [requirementName]);
+        return result.insertId; // This should now return the auto-generated ID of the new requirement
+    } catch (error) {
+        console.error('Error executing query:', error.message);
+        throw error;
+    }
+}
+
+async function insertInternRequirement(internid, reqid) {
+    try {
+        const query = `INSERT INTO internrequirements (internid, reqid, datesubmitted, status, remarks)
+         VALUES (?, ?, '', 'PENDING', '')`;
+        const [result] = await pool.query(query, [internid, reqid]);
+        return result.insertId;
+    } catch (error) {
+        console.error('Error executing query:', error.message);
         throw error;
     }
 }
@@ -301,9 +408,12 @@ async function fetchSupervisor(supervisorId) {
 
 
 
+
+
+
 async function fetchInterns(adviserID) {
     try {
-        const [rows] = await pool.query("SELECT *, CASE WHEN totalhours < 240 THEN 'ON GOING' WHEN totalhours = 240 THEN 'FINISHED' ELSE 'ON GOING' END AS 'status' FROM (SELECT studentname, classcode, companyname, companyaddress, totalhours  FROM students NATURAL JOIN interns INNER JOIN company ON interns.companyid = company.companyid INNER JOIN advisers ON advisers.adviserID = interns.adviserID where advisers.adviserID = ? AND interns.status = 'ACCEPTED') AS subquery", [adviserID]);
+        const [rows] = await pool.query("SELECT *, CASE WHEN totalhours < 240 THEN 'ON GOING' WHEN totalhours = 240 THEN 'FINISHED' ELSE 'ON GOING' END AS 'status' FROM (SELECT interns.internid, studentname, classcode, companyname, companyaddress, totalhours  FROM students NATURAL JOIN interns INNER JOIN company ON interns.companyid = company.companyid INNER JOIN advisers ON advisers.adviserID = interns.adviserID where advisers.adviserID = ? AND interns.status = 'ACCEPTED') AS subquery", [adviserID]);
         console.log('Fetch Interns Query Result:', rows);
         return rows;
     } catch (error) {
@@ -336,7 +446,7 @@ async function fetchAnnouncements(senderid) {
 async function deleteAnnouncement(announcementid) {
     try {
         await pool.query('DELETE from announcements where announcementid = ?', [announcementid]);
-    } catch(er) {
+    } catch (er) {
         console.error('Error executing query:', error.message);
         throw error;
     }
@@ -396,21 +506,38 @@ async function fetchInternDailyReports(internID) {
 
 async function fetchWeeklyReports(internID) {
     try {
+        // Find out the earliest and latest date for the intern's reports
+        const [minMaxDates] = await pool.query(`
+            SELECT 
+                MIN(date) as minDate,
+                MAX(date) as maxDate
+            FROM 
+                dailyreports 
+            WHERE 
+                internid = ?
+        `, [internID]);
+
+        // Calculate the number of full weeks
+        const minDate = minMaxDates[0].minDate;
+        const maxDate = minMaxDates[0].maxDate;
+        const fullWeeks = Math.floor((new Date(maxDate) - new Date(minDate)) / (7 * 24 * 60 * 60 * 1000));
+
+        // Retrieve only the rows that fall within the full week range
         const [rows] = await pool.query(`
-        SELECT 
-            DAYNAME(dailyreports.date) as dayOfWeek,
-            dailyreports.date as date,
-            dailyreports.workdescription as description,
-            dailyreports.hours as hours
-        FROM 
-            dailyreports
-        WHERE 
-            internid = ? AND
-            dailyreports.date >= (SELECT MIN(date) FROM dailyreports WHERE internid = ?) AND
-            dailyreports.date < (SELECT ADDDATE(MIN(date), INTERVAL 7 DAY) FROM dailyreports WHERE internid = ?)
-        ORDER BY
-            dailyreports.date
-        `, [internID, internID, internID]);
+            SELECT 
+                DAYNAME(date) as dayOfWeek,
+                date,
+                workdescription as description,
+                hours
+            FROM 
+                dailyreports
+            WHERE 
+                internid = ? AND
+                date >= ? AND
+                date < ADDDATE(?, INTERVAL ?*7 DAY)
+            ORDER BY
+                date;
+        `, [internID, minDate, minDate, fullWeeks]);
 
         return rows;
     } catch (error) {
@@ -418,8 +545,6 @@ async function fetchWeeklyReports(internID) {
         throw error;
     }
 }
-
-
 
 async function hashAdviserPasswords() {
     try {
@@ -477,7 +602,9 @@ module.exports = {
     fetchPendingStudentsByClassCode,
     fetchPendingStudentsByCompany,
     fetchPendingStudentsByAddress,
+    fetchPendingStudentsByWorkType,
     fetchRequirementsByStudentId,
+    fetchRequirementsByInternId,
     updateRemarks,
     updateStatus,
     uploadPicture,
@@ -488,11 +615,16 @@ module.exports = {
     deleteAnnouncement,
     fetchAdviser,
     insertAnnouncement,
+    insertNewRequirement,
+    insertInternRequirement,
     fetchDailyReports,
     fetchInternDailyReports,
+    fetchUnassignedRequirements,
+    fetchAllRequirements,
     fetchInternId,
     fetchSupervisor,
     fetchWeeklyReports,
+    updateInternRemarks,
     closeDatabase,
 
 };

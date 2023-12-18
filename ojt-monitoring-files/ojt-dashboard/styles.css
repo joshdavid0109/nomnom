@@ -5,6 +5,9 @@ body {
     font-family: 'Noto Sans', sans-serif;
     margin: 0;
     padding: 0;
+    display: flex;
+    flex-direction: column;
+    height: 120vh;
     width: 100%;
     background-color: rgb(228, 228, 228);
 }
@@ -50,7 +53,7 @@ header {
 
 #profile-image {
     cursor: pointer;
-    width: 50%;
+    width: 100%;
     height: auto;
     border-radius: 50%;
     /* Makes the image round */
@@ -59,9 +62,54 @@ header {
 /* HEADER
 */
 
-/*
---------------
+
+/* HEADER
 */
+header {
+    font-size: 12px;
+    font-weight: bold;
+}
+
+.navbar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background-color: #0D0464;
+    /* Dark purple color */
+    color: #E1AD0F;
+    padding: 10px 20px;
+}
+
+.nav-name {
+    margin-left: auto;
+    margin-right: 15px;
+    font-weight: bold;
+    font-size: 12px;
+}
+
+.nav-item {
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background-color: #777673;
+    /* Yellow color for the circle */
+    border-radius: 50%;
+    margin-right: 40px;
+    width: 30px;
+    /* Adjust as necessary */
+    height: 30px;
+    /* Adjust as necessary */
+}
+
+#profile-image {
+    cursor: pointer;
+    width: 100%;
+    height: auto;
+    border-radius: 50%;
+    /* Makes the image round */
+}
+
 
 /* MAIN
 */
@@ -108,17 +156,18 @@ section {
 }
 
 
-.left-nav .material-symbols-outlined{
+.left-nav .material-symbols-outlined {
     transform: scale(4);
     height: auto;
     margin: 50px;
     color: #0D0464;
 }
 
-.left-nav form{
+.left-nav form {
     margin-top: 30%;
 }
-#logoutbutton{
+
+#logoutbutton {
     border-radius: 20px;
     padding: 2.5% 5.8% 2.5%;
     border: 2px solid #0D0464;
@@ -299,8 +348,8 @@ li:not(:last-child) {
 .intern-count-box .total-interns,
 .intern-count-box .finished-interns {
     background-color: rgb(228, 228, 228);
-    width: 160px;
-    height: 150px;
+    width: 20%;
+    height: 30%;
     border-radius: 30px;
 }
 
@@ -309,7 +358,7 @@ li:not(:last-child) {
     font-family: "PT SANS", sans-serif;
     font-weight: 600;
     color: #0D0464;
-    font-size: 85px;
+    font-size: 10vh;
     text-align: center;
     justify-content: center;
     align-items: center;
@@ -603,7 +652,7 @@ td {
     background-color: #777673;
 }
 
-.button-options .cancel-post-button  {
+.button-options .cancel-post-button {
     background-color: #e92c1e;
     border-radius: 80px;
     box-shadow: rgba(44, 187, 99, .2) 0 -25px 18px -14px inset, rgba(44, 187, 99, .15) 0 1px 2px, rgba(44, 187, 99, .15) 0 2px 4px, rgba(44, 187, 99, .15) 0 4px 8px, rgba(44, 187, 99, .15) 0 8px 16px, rgba(44, 187, 99, .15) 0 16px 32px;
@@ -611,7 +660,7 @@ td {
     cursor: pointer;
     display: block;
     margin-left: auto;
-    margin-right:auto;
+    margin-right: auto;
     margin-top: 20px;
 
     padding: 7px 20px 10px;
@@ -727,7 +776,7 @@ td {
     height: 100vh;
     width: 100%;
     display: block;
-    z-index: 1000;
+    z-index: 10000;
     top: 0;
     left: 0;
     background-color: transparent;
@@ -747,7 +796,7 @@ td {
     display: block;
     z-index: 1000;
     top: 0;
-    
+
     left: 0;
     background-color: transparent;
     backdrop-filter: blur(3px);
@@ -844,8 +893,10 @@ td {
     align-items: center;
     justify-content: space-between;
     margin-top: 20px;
-
+    padding-right: 20px;
+    
 }
+
 
 .content .intern-row,
 .content .intern-row-checkbox img {
@@ -1089,6 +1140,59 @@ td {
     z-index: 9000;
 }
 
+.button-holder {
+    display: flex;
+    flex-direction: row;
+}
+
+#addRequirementButton {
+    background-color: #62af69;
+    border-radius: 80px;
+    box-shadow: rgba(44, 187, 99, .2) 0 -25px 18px -14px inset, rgba(44, 187, 99, .15) 0 1px 2px, rgba(44, 187, 99, .15) 0 2px 4px, rgba(44, 187, 99, .15) 0 4px 8px, rgba(44, 187, 99, .15) 0 8px 16px, rgba(44, 187, 99, .15) 0 16px 32px;
+    color: rgb(255, 255, 255);
+    cursor: pointer;
+    margin-top: 20px;
+    margin-right: 10px;
+    padding: 7px 20px 10px;
+    text-align: center;
+    text-decoration: none;
+    transition: all 250ms;
+    border: 0;
+    font-size: 16px;
+    user-select: none;
+    -webkit-user-select: none;
+    touch-action: manipulation;
+    display: none;
+}
+
+#addreqbtn {
+    text-decoration: none;
+    color: white;
+}
+
+.save-btn {
+    background-color: #024708;
+    border-radius: 80px;
+    box-shadow: rgba(44, 187, 99, .2) 0 -25px 18px -14px inset, rgba(44, 187, 99, .15) 0 1px 2px, rgba(44, 187, 99, .15) 0 2px 4px, rgba(44, 187, 99, .15) 0 4px 8px, rgba(44, 187, 99, .15) 0 8px 16px, rgba(44, 187, 99, .15) 0 16px 32px;
+    color: rgb(255, 255, 255);
+    cursor: pointer;
+    margin-top: 20px;
+
+    padding: 7px 20px 10px;
+    text-align: center;
+    text-decoration: none;
+    transition: all 250ms;
+    border: 0;
+    font-size: 16px;
+    user-select: none;
+    -webkit-user-select: none;
+    touch-action: manipulation;
+    display: none;
+    display: none;
+}
+
+
+
 /* Requirements box styling */
 .requirements-box {
     margin: 1% auto;
@@ -1202,6 +1306,8 @@ td {
     font-size: 35px;
 }
 
+
+
 /*ICON */
 .material-symbols-outlined {
     font-variation-settings:
@@ -1209,4 +1315,21 @@ td {
         'wght' 400,
         'GRAD' 0,
         'opsz' 24
+}
+
+
+/* FOOTER */
+
+.footer {
+    background-color: #0D0464;
+    text-align: center;
+    position: static;
+    bottom: 0;
+    width: 100%;
+    height: auto;
+}
+
+.footer .text {
+    font-weight: 600;
+    color: white;
 }
